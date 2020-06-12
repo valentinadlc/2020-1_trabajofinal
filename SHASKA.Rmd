@@ -1,0 +1,87 @@
+#mortalidad TBC
+```{r}
+#install.packages('rio')
+library(rio)
+linkTBC="https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/mortalidad%20TBC.xlsx"
+mortalidad= import(linkTBC)
+```
+```{r}
+#limpieza
+names(mortalidad)[names(mortalidad)=="...1"]="Country"
+mortalidad$Country = trimws(mortalidad$Country,whitespace = "[\\h\\v]")
+```
+```{r}
+names(mortalidad)[names(mortalidad)=="Number of deaths due to tuberculosis, excluding HIV"]="number_of_death"
+names(mortalidad)[names(mortalidad)=="Deaths due to tuberculosis among HIV-negative people (per 100 000 population)"]="death_per_1000000_population"
+```
+```{r}
+#obtenemos solo numero
+#install.packages('stringr')
+#install.packages('magrittr')
+library(stringr)
+library(magrittr)
+
+mortalidad$number_of_death=str_extract_all(mortalidad$number_of_death,
+                         pattern = '(\\-*\\d+\\.*\\d*)',
+                         simplify = T)[,1]
+mortalidad$death_per_1000000_population=str_extract_all(mortalidad$death_per_1000000_population,
+                         pattern = '(\\-*\\d+\\.*\\d*)',
+                         simplify = T)[,1]
+```
+```{r}
+mortalidad[,c(2,3)] = lapply(mortalidad[,c(2,3)], as.numeric)
+```
+```{r}
+str(mortalidad)
+```
+
+#cobertura de salud (personal y hospitales)
+```{r}
+#PERSONAL 
+library(rio)
+linkmedicos= "https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/cantidad%20de%20medicos%20por%20cada%2010000.xlsx" 
+
+personal= import(linkmedicos)
+```
+```{r}
+#limpieza
+names(personal)[names(personal)=="Medical doctors (per 10 000 population)"]="medical_doctors_per_10000_population"
+```
+```{r}
+personal$Country = trimws(personal$Country,whitespace = "[\\h\\v]")
+```
+```{r}
+personal[2] = lapply(personal[2], as.numeric)
+```
+
+```{r}
+str(personal)
+```
+```{r}
+#HOSPITALES
+library(rio)
+linkhosp= "https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/densidad%20de%20infraestructura%20de%20salud.xlsx" 
+
+hospitales = import(linkhosp)
+```
+```{r}
+hospitales[,c(2:6)]=NULL
+```
+```{r}
+names(hospitales)[names(hospitales)=="Total density per 100 000 population: Hospitals"]="hospitals_density_per_100000_population"
+```
+```{r}
+hospitales$Country = trimws(hospitales$Country,whitespace = "[\\h\\v]")
+hospitales[2] = lapply(hospitales[2], as.numeric)
+```
+```{r}
+str(hospitales)
+ncol(hospitales)
+```
+
+```{r}
+#merge
+healthcoverage= merge(personal,hospitales)
+```
+
+
