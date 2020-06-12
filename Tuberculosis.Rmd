@@ -1,0 +1,60 @@
+
+
+```{r}
+library(readxl)
+tuberculosis <- read_excel("tuberculosis.xls")
+```
+
+```{r}
+str(tuberculosis)
+```
+```{r}
+tuberculosis[,c(2:20)]=NULL
+tuberculosis[,c(3)]=NULL
+names(tuberculosis) = c("Country","Incidencia 2018")
+tuberculosis[,]=lapply(tuberculosis[,], trimws,whitespace = "[\\h\\v]")
+tuberculosis = tuberculosis[2:229,]
+tuberculosis$`Incidencia 2018`= as.numeric(tuberculosis$`Incidencia 2018`)
+str(tuberculosis)
+```
+
+```{r}
+library(htmltab)
+linkPage= "https://es.wikipedia.org/wiki/Anexo:Pa%C3%ADses"
+linkpath = '//*[@id="mw-content-text"]/div/table[1]'
+
+paises = htmltab(doc = linkPage,
+                       which = linkpath)
+library(stringr)
+paises[,c(1,3:8)]=NULL
+names(paises)= c("Country")
+paises$Country = str_split(paises$Country,
+                         pattern = '/',
+                         simplify = T)[,1]
+str(paises)
+```
+# MERGE
+
+```{r}
+tuberculosis2 = merge(tuberculosis,paises,all.x=T, all.y=T)
+```
+
+```{r}
+library(knitr)
+library(kableExtra)
+kable(tuberculosis2[!complete.cases(tuberculosis2),],type='html')%>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                  font_size = 10)
+```
+```{r}
+tuberculosis[tuberculosis$Country=="Afghanistan",'Country']="Afganistán"
+```
+
+Limpieza aún no terminada
+
+
+
+
+
+
+
