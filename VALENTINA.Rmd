@@ -1,0 +1,201 @@
+
+#EDUCACION
+
+#EducationalExpenditure
+```{r}
+library(htmltab)
+linkCIA_edu = "https://www.cia.gov/library/publications/resources/the-world-factbook/fields/369rank.html"
+linkPath_edu='//*[@id="rankOrder"]' 
+
+gastoeducacion = htmltab(doc = linkCIA_edu,
+                which =linkPath_edu)
+
+```
+```{r}
+#LIMPIEZA
+
+#borrando columnas solo me quedo con country 
+gastoeducacion$Rank=NULL
+gastoeducacion$`Date of Information`=NULL
+
+#espacios en blanco
+gastoeducacion$Country=trimws(gastoeducacion$Country,whitespace="[\\h\\v]") 
+
+```
+
+```{r}
+str(gastoeducacion)
+```
+
+```{r}
+names(gastoeducacion) = c("Country", "GDP")
+```
+
+```{r}
+#volver a numérico
+gastoeducacion$GDP = as.numeric(gastoeducacion$GDP)
+
+#na omit 
+
+```
+
+
+#Años esperados de educación
+```{r}
+library(htmltab)
+linkCIA_eduyears = "https://en.wikipedia.org/wiki/Education_Index"
+linkPath_eduyears='//*[@id="mw-content-text"]/div/table'
+
+esperadoeducacion = htmltab(doc = linkCIA_eduyears,
+                which =linkPath_eduyears)
+```
+
+
+```{r}
+#LIMPIEZA
+
+#espacios en blanco 
+esperadoeducacion$Country=trimws(esperadoeducacion$Country,whitespace="[\\h\\v]") 
+
+#solo me quedo con Country y Años de educación esperados
+esperadoeducacion$Rank=NULL
+esperadoeducacion$`EducationIndex`=NULL
+esperadoeducacion$`Mean years of schooling`=NULL
+esperadoeducacion$`Continent`=NULL
+esperadoeducacion$`HDI rank`=NULL
+
+#cambiar encabezado
+names(esperadoeducacion) = c("Country", "edu_years")
+
+
+#volver numérico
+esperadoeducacion$edu_years=as.numeric(esperadoeducacion$edu_years)
+```
+
+```{r}
+str(esperadoeducacion)
+```
+
+#MERGE DE GASTO GDP en educación Y AÑOS ESPERADOS de educación
+```{r}
+educacion=merge(esperadoeducacion, gastoeducacion, by.x = "Country")
+```
+
+
+#NUTRICIÓN
+
+#Niños menores de 5 con bajo peso en %
+```{r}
+linkCIA_children = "https://www.cia.gov/library/publications/resources/the-world-factbook/fields/368rank.html"
+linkPath_children='//*[@id="rankOrder"]' #Aca uso comillas simples porque dentro hay comillas dobles y tienen que ser diferentes
+
+bajopeso = htmltab(doc = linkCIA_children,
+                which =linkPath_children)
+```
+```{r}
+#LIMPIEZA
+
+#espacios en blanco 
+bajopeso$Country=trimws(bajopeso$Country,whitespace="[\\h\\v]") 
+
+#solo me quedo con Country y bajo peso %
+bajopeso$Rank=NULL
+bajopeso$`Date of Information`=NULL
+
+#cambiar encabezado
+names(bajopeso) = c("Country", "bajo_pesoporcentaje")
+
+#volver numérico
+bajopeso$bajo_pesoporcentaje=as.numeric(bajopeso$bajo_pesoporcentaje)
+```
+
+
+#globalhungerindex
+```{r}
+#Leyendo CSV
+lkCSVghi="https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/global-hunger-index.csv"
+ghi=import(lkCSVghi)
+
+ghi2 = ghi[ghi$Year == "2016",]
+str(ghi2)
+```
+```{r}
+#LIMPIEZA
+
+#espacios en blanco 
+ghi2$Entity=trimws(ghi2$Entity,whitespace="[\\h\\v]") 
+
+#solo me quedo con Country y global hunger index 
+ghi2$`Code`=NULL
+ghi2$`Year`=NULL
+
+#cambiar encabezado
+names(ghi2) = c("Country", "GHI")
+
+#volver numérico
+ghi2$GHI=as.numeric(ghi2$GHI)
+```
+
+
+#prevalenceofundernourishment
+```{r}
+#Leyendo CSV
+lkCSVpn="https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/prevalence-of-undernourishment.csv"
+desnutrición=import(lkCSVpn)
+
+desnutrición2 = desnutrición[desnutrición$Year == "2016",]
+
+#LIMPIEZA
+
+#espacios en blanco 
+desnutrición2$Entity=trimws(desnutrición2$Entity,whitespace="[\\h\\v]") 
+
+#solo me quedo con Country y desnutricion
+desnutrición2$`Code`=NULL
+desnutrición2$`Year`=NULL
+
+#cambiar encabezado
+names(desnutrición2) = c("Country", "desnutricion_porcentaje")
+
+#volver numérico
+desnutrición2$desnutricion_porcentaje=as.numeric(desnutrición2$desnutricion_porcentaje)
+```
+
+```{r}
+str(desnutrición2)
+```
+
+
+#retraso del crecimiento menores de 5
+```{r}
+#Leyendo CSV
+lkCSVretraso="https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/share-of-children-younger-than-5-who-suffer-from-stunting.csv"
+retrasocrecimiento=import(lkCSVretraso)
+
+```
+
+```{r}
+retraso2 = retrasocrecimiento[retrasocrecimiento$Year >"2008",]
+
+```
+
+```{r}
+#LIMPIEZA
+
+#espacios en blanco 
+retraso2$Entity=trimws(retraso2$Entity,whitespace="[\\h\\v]") 
+
+#solo me quedo con Country y retrasocrecimiento
+retraso2$`Code`=NULL
+retraso2$`Year`=NULL
+
+#cambiar encabezado
+names(retraso2) = c("Country", "Retrasocrecimiento_porcentaje")
+
+#volver numérico
+retraso2$Retrasocrecimiento_porcentaje=as.numeric(retraso2$Retrasocrecimiento_porcentaje)
+```
+
+
+
+
