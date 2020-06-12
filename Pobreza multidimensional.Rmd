@@ -1,0 +1,28 @@
+
+# Data indice de pobreza multidimensional
+
+```{r}
+library(htmltab)
+link = "https://es.wikipedia.org/wiki/%C3%8Dndice_de_pobreza_multidimensional"
+path = '//*[@id="mw-content-text"]/div/center[2]/table'
+
+ipm =  htmltab(doc = link,
+                       which = path)
+#Limpieza
+ipm[,]=lapply(ipm[,], trimws,whitespace = "[\\h\\v]")
+ipm[,c(3:6)]=NULL
+ipm$IPM = as.numeric(ipm$IPM)
+
+str(ipm)
+```
+
+
+
+
+
+
+
+
+
+
+
