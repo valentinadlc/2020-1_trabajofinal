@@ -1,0 +1,18 @@
+---
+title: "Ambiental"
+output: html_notebook
+---
+
+```{r}
+ambiental <- read_excel("2018-epi.xlsx", 
+    sheet = "2018EPI_ScoresCurrent")
+str(ambiental)
+```
+```{r}
+#Limpieza 
+ambiental[,c(1:2)]=NULL
+ambiental[,c(2:14)]=NULL
+names(ambiental)=str_split(names(ambiental),".cu",simplify = T)[,1]%>%gsub('\\s','',.)
+str(ambiental)
+```
+
