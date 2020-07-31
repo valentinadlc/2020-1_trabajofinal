@@ -1,0 +1,20 @@
+#population
+```{r}
+library(htmltab)
+linkpop="https://www.worldometers.info/world-population/population-by-country/"
+xpathpop='//*[@id="example2"]'
+population = htmltab (doc=linkpop, which=xpathpop)
+```
+```{r}
+names(population)[names(population)=="Country (or dependency)"]="Country"
+names(population)[names(population)=="Population (2020)"]="Population"
+population$Country = trimws(population$Country,whitespace = "[\\h\\v]")
+population[,c(1,4:12)]=NULL
+```
+```{r}
+population$Population =gsub("\\,", "\\.",population$Population)
+```
+
+```{r}
+str(population)
+```
