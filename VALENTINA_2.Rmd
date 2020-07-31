@@ -1,0 +1,411 @@
+
+#EDUCACION
+
+#EducationalExpenditure
+```{r}
+library(htmltab)
+linkCIA_edu = "https://www.cia.gov/library/publications/resources/the-world-factbook/fields/369rank.html"
+linkPath_edu='//*[@id="rankOrder"]' 
+
+gastoeducacion = htmltab(doc = linkCIA_edu,
+                which =linkPath_edu)
+
+```
+```{r}
+#LIMPIEZA
+
+#borrando columnas solo me quedo con country 
+gastoeducacion$Rank=NULL
+gastoeducacion$`Date of Information`=NULL
+
+#espacios en blanco
+gastoeducacion$Country=trimws(gastoeducacion$Country,whitespace="[\\h\\v]") 
+
+```
+
+```{r}
+str(gastoeducacion)
+```
+
+```{r}
+names(gastoeducacion) = c("Country", "GDP")
+```
+
+```{r}
+#volver a numérico
+gastoeducacion$GDP = as.numeric(gastoeducacion$GDP)
+
+#na omit 
+
+```
+
+
+#Años esperados de educación
+```{r}
+library(htmltab)
+linkCIA_eduyears = "https://en.wikipedia.org/wiki/Education_Index"
+linkPath_eduyears='//*[@id="mw-content-text"]/div/table'
+
+esperadoeducacion = htmltab(doc = linkCIA_eduyears,
+                which =linkPath_eduyears)
+```
+
+
+```{r}
+#LIMPIEZA
+
+#espacios en blanco 
+esperadoeducacion$Country=trimws(esperadoeducacion$Country,whitespace="[\\h\\v]") 
+
+#solo me quedo con Country y Años de educación esperados
+esperadoeducacion$Rank=NULL
+esperadoeducacion$`EducationIndex`=NULL
+esperadoeducacion$`Mean years of schooling`=NULL
+esperadoeducacion$`Continent`=NULL
+esperadoeducacion$`HDI rank`=NULL
+
+#cambiar encabezado
+names(esperadoeducacion) = c("Country", "edu_years")
+
+
+#volver numérico
+esperadoeducacion$edu_years=as.numeric(esperadoeducacion$edu_years)
+```
+
+```{r}
+str(esperadoeducacion)
+```
+
+#MERGE DE GASTO GDP en educación Y AÑOS ESPERADOS de educación
+```{r}
+educacion=merge(esperadoeducacion, gastoeducacion, by.x = "Country")
+```
+
+
+#NUTRICIÓN
+
+#Niños menores de 5 con bajo peso en %
+```{r}
+linkCIA_children = "https://www.cia.gov/library/publications/resources/the-world-factbook/fields/368rank.html"
+linkPath_children='//*[@id="rankOrder"]' #Aca uso comillas simples porque dentro hay comillas dobles y tienen que ser diferentes
+
+bajopeso = htmltab(doc = linkCIA_children,
+                which =linkPath_children)
+```
+```{r}
+#LIMPIEZA
+
+#espacios en blanco 
+bajopeso$Country=trimws(bajopeso$Country,whitespace="[\\h\\v]") 
+
+#solo me quedo con Country y bajo peso %
+bajopeso$Rank=NULL
+bajopeso$`Date of Information`=NULL
+
+#cambiar encabezado
+names(bajopeso) = c("Country", "bajo_pesoporcentaje")
+
+#volver numérico
+bajopeso$bajo_pesoporcentaje=as.numeric(bajopeso$bajo_pesoporcentaje)
+```
+
+
+#globalhungerindex
+```{r}
+library(rio)
+#Leyendo CSV
+lkCSVghi="https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/global-hunger-index.csv"
+ghi=import(lkCSVghi)
+
+ghi2 = ghi[ghi$Year == "2016",]
+str(ghi2)
+```
+```{r}
+#LIMPIEZA
+
+#espacios en blanco 
+ghi2$Entity=trimws(ghi2$Entity,whitespace="[\\h\\v]") 
+
+#solo me quedo con Country y global hunger index 
+ghi2$`Code`=NULL
+ghi2$`Year`=NULL
+
+#cambiar encabezado
+names(ghi2) = c("Country", "GHI")
+
+#volver numérico
+ghi2$GHI=as.numeric(ghi2$GHI)
+```
+
+
+#prevalenceofundernourishment
+```{r}
+#Leyendo CSV
+lkCSVpn="https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/prevalence-of-undernourishment.csv"
+desnutrición=import(lkCSVpn)
+
+desnutrición2 = desnutrición[desnutrición$Year == "2016",]
+
+#LIMPIEZA
+
+#espacios en blanco 
+desnutrición2$Entity=trimws(desnutrición2$Entity,whitespace="[\\h\\v]") 
+
+#solo me quedo con Country y desnutricion
+desnutrición2$`Code`=NULL
+desnutrición2$`Year`=NULL
+
+#cambiar encabezado
+names(desnutrición2) = c("Country", "desnutricion_porcentaje")
+
+#volver numérico
+desnutrición2$desnutricion_porcentaje=as.numeric(desnutrición2$desnutricion_porcentaje)
+```
+
+```{r}
+str(desnutrición2)
+```
+
+
+#retraso del crecimiento menores de 5
+```{r}
+#Leyendo CSV
+lkCSVretraso="https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/2.0%20share-of-children-younger-than-5-who-suffer-from-stunting.xlsx"
+retraso2=import(lkCSVretraso)
+
+```
+
+```{r}
+#LIMPIEZA
+
+#espacios en blanco 
+retraso2$Entity=trimws(retraso2$Entity,whitespace="[\\h\\v]") 
+
+#solo me quedo con Country y retrasocrecimiento
+retraso2$`Code`=NULL
+retraso2$`Year`=NULL
+
+#cambiar encabezado
+names(retraso2) = c("Country", "Retrasocrecimiento_porcentaje")
+
+#volver numérico
+retraso2$Retrasocrecimiento_porcentaje=as.numeric(retraso2$Retrasocrecimiento_porcentaje)
+```
+
+#Alcohol
+```{r}
+#Leyendo CSV
+lkCSValcohol="https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/alcohol-data.csv"
+alcohol=import(lkCSValcohol)
+```
+
+```{r}
+alcohol2=alcohol
+```
+
+```{r}
+#solo me quedo con Country y desnutricion
+alcohol2$`alcoholPerDay`=NULL
+alcohol2$`beer%`=NULL
+alcohol2$`wine%`=NULL
+alcohol2$`spirits%`=NULL
+```
+
+```{r}
+#LIMPIEZA
+
+#cambiar encabezado
+names(alcohol2) = c("Country", "AlcoholporAño")
+
+#espacios en blanco 
+alcohol2$Country=trimws(alcohol2$Country,whitespace="[\\h\\v]") 
+```
+
+```{r}
+str(alcohol2)
+```
+
+#Tabaco
+```{r}
+#Leyendo CSV
+lkCSVtabaco="https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/data_tabacco.csv"
+tabaco=import(lkCSVtabaco)
+
+tabaco2=tabaco[,c(1,2,3)]
+```
+
+```{r}
+#cambiar encabezado
+names(tabaco2) = c("Country", "Año", "prevalencia_tabaco")
+#espacios en blanco 
+tabaco2$Country=trimws(tabaco2$Country,whitespace="[\\h\\v]") 
+```
+
+```{r}
+#Limpieza
+tabaco3=tabaco2[-c(1,2),]
+names(tabaco3) = c("Country", "Año", "prevalencia_tabaco")
+tabaco3=tabaco3[tabaco3$Año== "2018",]
+#espacios en blanco 
+tabaco3$Country=trimws(tabaco3$Country,whitespace="[\\h\\v]") 
+#Numero entero, seguido opcionalmente de punto y mas un numero de una o mas cifras
+library(readr)
+tabaco3$prevalencia_tabaco= parse_number(tabaco3$prevalencia_tabaco)
+```
+
+```{r}
+tabaco4=tabaco3[,-c(2)]
+```
+
+#merge alcohol y tabaco 
+```{r}
+alcohol_tabaco = merge(alcohol2,tabaco4,all.x=T,all.y=T)
+```
+
+```{r}
+library(knitr)
+library(kableExtra)
+kable(alcohol_tabaco[!complete.cases(alcohol_tabaco),],type='html')%>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                  font_size = 10)
+```
+```{r}
+#cambiar nombres
+tabaco4[tabaco4$Country=="Brunei Darussalam",'Country']="Brunei"
+tabaco4[tabaco4$Country=="Republic of Moldova",'Country']="Moldova"
+tabaco4[tabaco4$Country=="Russian Federation",'Country']="Russia"
+tabaco4[tabaco4$Country=="Iran (Islamic Republic of)",'Country']="Iran"
+tabaco4[tabaco4$Country=="Lao People's Democratic Republic",'Country']="Laos"
+tabaco4[tabaco4$Country=="United States of America",'Country']="United States"
+tabaco4[tabaco4$Country=="United Kingdom of Great Britain and Northern Ireland",'Country']="United Kingdom"
+tabaco4[tabaco4$Country=="Republic of Korea",'Country']="South Korea" 
+tabaco4[tabaco4$Country=="Democratic People's Republic of Korea",'Country']="North Korea"
+alcohol2[alcohol2$Country=="Republic of the Congo",'Country']="Congo"
+alcohol2[alcohol2$Country=="Swaziland",'Country']="Eswatini"
+alcohol2[alcohol2$Country=="Czech Republic", 'Country']="Czechia"
+tabaco4[tabaco4$Country=="United Republic of Tanzania",'Country']="Tanzania"
+```
+
+#merge alcohol y tabaco 
+```{r}
+alcohol_tabaco = merge(alcohol2,tabaco4,all.x=T,all.y=T)
+```
+
+#obesidad
+```{r}
+#Leyendo CSV
+lkCSVobesidad="https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/obesidad.csv"
+obesidad=import(lkCSVobesidad)
+```
+
+```{r}
+obesidad2=obesidad[,c(1,2)]
+#cambiar encabezado
+names(obesidad2) = c("Country", "prevalencia_obesidad")
+#espacios en blanco 
+obesidad2$Country=trimws(obesidad2$Country,whitespace="[\\h\\v]") 
+obesidad3=obesidad2[-c(1,2,3,4),]
+#Numero entero, seguido opcionalmente de punto y mas un numero de una o mas cifras
+library(readr)
+obesidad3$prevalencia_obesidad= parse_number(obesidad3$prevalencia_obesidad)
+```
+
+
+#merge
+```{r}
+alcohol_tabaco_obesidad= merge(alcohol_tabaco, obesidad3, all.x=T,all.y=T)
+```
+
+```{r}
+library(knitr)
+library(kableExtra)
+kable(alcohol_tabaco_obesidad[!complete.cases(alcohol_tabaco_obesidad),],type='html')%>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                  font_size = 10)
+```
+```{r}
+#cambiar nombres
+obesidad3[obesidad3$Country=="United States of America",'Country']="United States"
+obesidad3[obesidad3$Country=="United Kingdom of Great Britain and Northern Ireland",'Country']="United Kingdom"
+obesidad3[obesidad3$Country=="Viet Nam",'Country']="Vietnam"
+obesidad3[obesidad3$Country=="Venezuela (Bolivarian Republic of)",'Country']="Venezuela"
+obesidad3[obesidad3$Country=="Bolivia (Plurinational State of)",'Country']="Bolivia"
+obesidad3[obesidad3$Country=="Brunei Darussalam",'Country']="Brunei"
+obesidad3[obesidad3$Country=="Cabo Verde",'Country']="Cape Verde"
+obesidad3[obesidad3$Country=="Iran (Islamic Republic of)",'Country']="Iran"
+obesidad3[obesidad3$Country=="Lao People's Democratic Republic",'Country']="Laos"
+obesidad3[obesidad3$Country=="Democratic Republic of the Congo",'Country']="DR Congo"
+obesidad3[obesidad3$Country=="Micronesia (Federated States of)",'Country']="Micronesia"
+obesidad3[obesidad3$Country=="Russian Federation",'Country']="Russia"
+obesidad3[obesidad3$Country=="Republic of Korea",'Country']="South Korea" 
+obesidad3[obesidad3$Country=="Democratic People's Republic of Korea",'Country']="North Korea"
+obesidad3[obesidad3$Country=="Republic of North Macedonia",'Country']="Macedonia"
+obesidad3[obesidad3$Country=="Republic of Moldova",'Country']="Moldova"
+obesidad3[obesidad3$Country=="Sudan (former)",'Country']="Sudan"
+obesidad3[obesidad3$Country=="United Republic of Tanzania",'Country']="Tanzania"
+obesidad3[obesidad3$Country=="Syrian Arab Republic",'Country']="Syria"
+```
+
+#merge
+```{r}
+alcohol_tabaco_obesidad= merge(alcohol_tabaco, obesidad3, all.x=T,all.y=T)
+```
+
+```{r}
+#borrar Sudan 
+alcohol_tabaco_obesidad <- alcohol_tabaco_obesidad[-c(165, 168), ]
+```
+
+#Prevalencia VIH
+```{r}
+#scarpping
+library(htmltab)
+link_vih = "https://en.wikipedia.org/wiki/List_of_countries_by_HIV/AIDS_adult_prevalence_rate"
+linkPath_vih='//*[@id="mw-content-text"]/div/table[2]' 
+
+VIH = htmltab(doc = link_vih,
+                which =linkPath_vih)
+```
+
+```{r}
+VIH2=VIH[,c(1,2)]
+#cambiar encabezado
+names(VIH2) = c("Country", "prevalencia_vih")
+#espacios en blanco 
+VIH2$Country=trimws(VIH2$Country,whitespace="[\\h\\v]") 
+#Numero entero, seguido opcionalmente de punto y mas un numero de una o mas cifras
+library(readr)
+VIH2$prevalencia_vih= parse_number(VIH2$prevalencia_vih)
+```
+#merge
+```{r}
+datasalud = merge(alcohol_tabaco_obesidad,VIH2,all.x=T,all.y=T)
+```
+
+```{r}
+library(knitr)
+library(kableExtra)
+kable(datasalud[!complete.cases(datasalud),],type='html')%>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                  font_size = 10)
+```
+
+```{r}
+VIH2[VIH2$Country=="Bahamas, The",'Country']="Bahamas"
+VIH2[VIH2$Country=="Congo, Democratic Republic of",'Country']="DR Congo"
+VIH2[VIH2$Country=="Congo, Republic of the",'Country']="Congo"
+VIH2[VIH2$Country=="Cote d'Ivoire",'Country']="Côte d'Ivoire"
+VIH2[VIH2$Country=="Czechia (Czech Republic)",'Country']="Czechia"
+VIH2[VIH2$Country=="Gambia, The",'Country']="Gambia"
+VIH2[VIH2$Country=="Eswatini (Swaziland)",'Country']="Eswatini"
+VIH2[VIH2$Country=="Russian Federation",'Country']="Russia"
+```
+
+#merge
+```{r}
+datasalud = merge(alcohol_tabaco_obesidad,VIH2,all.x=T,all.y=T)
+```
+
+#FIN
+
+
