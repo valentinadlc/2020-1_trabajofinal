@@ -1,0 +1,374 @@
+
+---
+title: "Proyecto Aplicativo"
+author: "Valentina De Las Casas, Shaska Guevara y Paola Nieto"
+date: "30/07/2020"
+output: html_document
+---
+
+## Estadística para el análisis político 2 - POL304 <br> 
+ 
+____
+## **Título**
+____
+
+<a id='beginning'></a>
+
+I.  __Índice __
+
+    * [1.Carga y limpieza de la data](#Carga)
+      * [1.1. Variable dependiente](#Limpieza)
+      * [1.2. Variables independientes](#Limpieza)
+    * [2.Aplicación del merge](#Merge)
+    * [3.Análisis factorial](#Descripcion)
+    * [4.Análisis de Cluster](#Cluster) 
+    * [5.Análisis de regresión](#regresion)
+
+El tema de investigación del proyecto aplicativo es la incidencia de tuberculosis a nivel internacional.El tema es relevante debido a que es una de las diez causas principales de muerte en el mundo. Según la OMS (2018) enfermaron 10 millones de personas y  1,5 millones fallecieron. Además tiene una rapida expansión en paises en desarrollo y afectan a todos los grupos etarios , lo que ha significado un incremento en la demanda de de servicios de salud y bienestar social. De esta forma, se ha dado pase a que los gobiernos incluyan medidas para tratar la tuberculosis en su agenda. 
+
+la investigación esta compuesta en primer lugar, por la limpieza de las bases de datos, en segundo lugar, realizamos el merge de las variables que iban a ser resumidas con la técnica de análisis factorial. Después de ello, juntamos los índices formados con el resto de variables y obtuvimos la base de datos final. En tercer lugar, realizamos mapas de conglomerados o clusters para reconocer visualmente las diferencias entre los grupos formados de acuerdo a las distancias según las características de las variables. Finalmente, realizamos una regresión para saber cuáles variables resultaban significativas y a qué conclusiones podríamos llegar con las diferencias entre ambos periodos. 
+
+
+#### **1. Carga y limpieza de la data**
+<a id='Apertura'></a> 
+
+#### **1.1. Variable dependiente**
+##### Data de Incidencia de TB
+
+- La variable dependiente es la prevalencia del TB, es una variable 
+```{r}
+library(rio)
+library(readxl)
+
+dataTB <- read_excel("tuberculosis_worldbank.xls")
+
+dataTB[,c(2:20)]=NULL
+dataTB[,c(3)]=NULL
+names(dataTB) = c("Country","IN18")
+dataTB[,]=lapply(dataTB[,], trimws,whitespace = "[\\h\\v]")
+dataTB = dataTB[2:229,]
+dataTB$IN18= as.numeric(dataTB$IN18)
+str(dataTB)
+```
+
+#### **1.2. Variables independientes**
+
+```{r}
+library(stringr)
+library(readr)
+library(magrittr)
+```
+
+- La variable independiente "ambiental" para la primera hipótesis del trabajo
+```{r}
+ambiental <- import("2018-epi.xlsx", sheet = "2018EPI_ScoresCurrent")
+
+ambiental[,c(1:2)]=NULL
+ambiental[,c(2:14)]=NULL
+names(ambiental)=str_split(names(ambiental),".cu",simplify = T)[,1]%>%gsub('\\s','',.)
+str(ambiental)
+```
+
+- La variable independiente "cobertura de salud" de la primera hipótesis del trabajo, esta compuesta por las variables personal y hospitales
+```{r}
+# PERSONAL
+linkmedicos =  "https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/cantidad%20de%20medicos%20por%20cada%2010000.xlsx" 
+personal = import(linkmedicos)
+
+names(personal)[names(personal)=="Medical doctors (per 10 000 population)"] = "PER"
+personal$Country = trimws(personal$Country,whitespace = "[\\h\\v]")
+personal[2] = lapply(personal[2], as.numeric)
+str(personal)
+```
+```{r}
+# HOSPITALES
+linkhosp= "https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/densidad%20de%20infraestructura%20de%20salud.xlsx" 
+hospitales = import(linkhosp)
+
+hospitales[,c(2:6)]=NULL
+names(hospitales)[names(hospitales)=="Total density per 100 000 population: Hospitals"]="HOS"
+hospitales$Country = trimws(hospitales$Country,whitespace = "[\\h\\v]")
+hospitales[2] = lapply(hospitales[2], as.numeric)
+str(hospitales)
+```
+
+- La variable independiente "calidad de vida" esta compuesta por las variables educación,  y hospitales
+```{r}
+#Gasto en educación
+library(htmltab)
+linkCIA_edu = "https://www.cia.gov/library/publications/resources/the-world-factbook/fields/369rank.html"
+linkPath_edu='//*[@id="rankOrder"]' 
+gastoeducacion = htmltab(doc = linkCIA_edu,
+                which =linkPath_edu)
+
+gastoeducacion$Rank=NULL
+gastoeducacion$`Date of Information`=NULL
+gastoeducacion$Country=trimws(gastoeducacion$Country,whitespace="[\\h\\v]") 
+names(gastoeducacion) = c("Country", "GDP")
+gastoeducacion$GDP = as.numeric(gastoeducacion$GDP)
+str(gastoeducacion)
+```
+
+```{r}
+#Años esperados de educación
+library(htmltab)
+linkCIA_eduyears = "https://en.wikipedia.org/wiki/Education_Index"
+linkPath_eduyears='//*[@id="mw-content-text"]/div/table'
+esperadoeducacion = htmltab(doc = linkCIA_eduyears, which =linkPath_eduyears)
+esperadoeducacion$Country=trimws(esperadoeducacion$Country,whitespace="[\\h\\v]") 
+#solo me quedo con Country y Años de educación esperados
+esperadoeducacion$Rank=NULL
+esperadoeducacion$`EducationIndex`=NULL
+esperadoeducacion$`Mean years of schooling`=NULL
+esperadoeducacion$`Continent`=NULL
+esperadoeducacion$`HDI rank`=NULL
+names(esperadoeducacion) = c("Country", "edu_years")
+#volver numérico
+esperadoeducacion$edu_years=as.numeric(esperadoeducacion$edu_years)
+names(esperadoeducacion) = c("Country", "EDYE")
+str(esperadoeducacion)
+```
+
+```{r}
+#NUTRICIÓN
+#Niños menores de 5 con bajo peso en %
+linkCIA_children = "https://www.cia.gov/library/publications/resources/the-world-factbook/fields/368rank.html"
+linkPath_children='//*[@id="rankOrder"]' 
+bajopeso = htmltab(doc = linkCIA_children, which =linkPath_children)
+bajopeso$Country=trimws(bajopeso$Country,whitespace="[\\h\\v]") 
+#solo me quedo con Country y bajo peso %
+bajopeso$Rank=NULL
+bajopeso$`Date of Information`=NULL
+names(bajopeso) = c("Country", "BPESO")
+bajopeso$BPESO=as.numeric(bajopeso$BPESO)
+str(bajopeso)
+```
+```{r}
+#globalhungerindex
+lkCSVghi="https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/global-hunger-index.csv"
+ghi=import(lkCSVghi)
+ghi2 = ghi[ghi$Year == "2016",]
+ghi2$Entity=trimws(ghi2$Entity,whitespace="[\\h\\v]") 
+#solo me quedo con Country y global hunger index 
+ghi2$`Code`=NULL
+ghi2$`Year`=NULL
+names(ghi2) = c("Country", "GHI")
+ghi2$GHI=as.numeric(ghi2$GHI)
+str(ghi2)
+```
+
+```{r}
+#prevalenceofundernourishment
+lkCSVpn="https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/prevalence-of-undernourishment.csv"
+desnutrición=import(lkCSVpn)
+desnutrición2 = desnutrición[desnutrición$Year == "2016",]
+desnutrición2$Entity=trimws(desnutrición2$Entity,whitespace="[\\h\\v]") 
+desnutrición2$`Code`=NULL
+desnutrición2$`Year`=NULL
+names(desnutrición2) = c("Country", "DESNU")
+desnutrición2$DESNU=as.numeric(desnutrición2$DESNU)
+str(desnutrición2)
+```
+
+```{r}
+#retraso del crecimiento menores de 5
+lkCSVretraso="https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/share-of-children-younger-than-5-who-suffer-from-stunting.csv"
+retrasocrecimiento=import(lkCSVretraso)
+
+retraso2 = retrasocrecimiento[retrasocrecimiento$Year >"2008",]
+retraso2$Entity=trimws(retraso2$Entity,whitespace="[\\h\\v]") 
+#solo me quedo con Country y retrasocrecimiento
+retraso2$`Code`=NULL
+retraso2$`Year`=NULL
+names(retraso2) = c("Country", "RECRE")
+retraso2$RECRE=as.numeric(retraso2$RECRE)
+str(retraso2)
+```
+
+- La variable independiente "" de la primera hipótesis del trabajo, esta compuesta por las variables 
+
+#### **2.Aplicación del merge**
+<a id='Merge'></a> 
+
+- Hacemos el merge con las variables que serán resumidas en el análisis factorial. 
+
+
+#Lo hacemos con la opción de quedarnos con NA's porque procedermos a imputar datos con la media en el análisis factorial (de lo contrario nos quedaríamos con menos de 50 casos). Decidimos imputar solo a los componentes de los índices porque al pasar por el análisis factorial, donde serán resumidos, el efecto no disminuye mucho en relación a variables que son imputadas sin pasar por un análisis factorial. El merge final se realizará con los índices producidos.
+```{r}
+dataTB 
+ambiental
+cobertura = merge(personal,hospitales,all.x=T,all.y=T)
+
+calidad0 = merge(gastoeducacion,esperadoeducacion,all.x=T,all.y=T)
+calidad1 = merge(calidad0,bajopeso,all.x=T,all.y=T)
+calidad2 = merge(calidad1,ghi2,all.x = T,all.y = T)
+calidad3 = merge(calidad2,desnutrición2,all.x=T,all.y=T)
+calidad = merge(calidad3,retraso2,all.x=T,all.y=T)
+
+cobertura = merge(personal,hospitales)
+```
+
+```{r}
+esperadoeducacion[esperadoeducacion$Country=="Brunei Darussalam",'Country']="Brunei"
+esperadoeducacion[esperadoeducacion$Country=="Viet Nam",'Country']="Vietnam"
+esperadoeducacion[esperadoeducacion$Country=="Syrian Arab Republic",'Country']="Syria"
+esperadoeducacion[esperadoeducacion$Country=="Russian Federation",'Country']="Russia"
+esperadoeducacion[esperadoeducacion$Country=="Eswatini (Swaziland)",'Country']="Eswatini"
+esperadoeducacion[esperadoeducacion$Country=="Czechia (Czech Republic)",'Country']="Czechia"
+gastoeducacion[gastoeducacion$Country=="Congo, Republic of the",'Country']="Congo"
+gastoeducacion[gastoeducacion$Country=="	Congo, Democratic Republic of the",'Country']="Democratic Republic of the Congo"
+gastoeducacion[gastoeducacion$Country=="Micronesia, Federated States of",'Country']="Micronesia"
+gastoeducacion[gastoeducacion$Country=="Korea, South",'Country']="South Korea"
+gastoeducacion[gastoeducacion$Country=="Gambia, The",'Country']="Gambia"
+```
+
+```{r}
+bajopeso[bajopeso$Country=="Korea, South",'Country']="South Korea"
+```
+
+```{r}
+library(knitr)
+library(kableExtra)
+kable(calidad1[!complete.cases(calidad1),],type='html')%>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                  font_size = 10)
+```
+
+#### **3. Análisis factorial**
+
+Analisis factorial para el primer índice
+```{r}
+ambiental_a=ambiental
+row.names(ambiental) = ambiental$country
+ambiental$country = NULL
+
+corMatrix=polycor::hetcor(ambiental)$correlations
+#Explorar correlaciones:
+#Sin evaluar significancia:
+library(ggcorrplot)
+ggcorrplot(corMatrix)
+```
+```{r}
+library(psych)
+psych::KMO(corMatrix) 
+```
+
+
+
+```{r}
+cobertura_a=cobertura
+row.names(cobertura) = cobertura$Country
+cobertura$country = NULL
+head(cobertura)
+
+library(polycor)
+corMatrix=polycor::hetcor(ambiental)$correlations
+#Explorar correlaciones:
+#Sin evaluar significancia:
+library(ggcorrplot)
+ggcorrplot(corMatrix)
+```
+```{r}
+library(psych)
+psych::KMO(corMatrix) 
+```
+
+Household Solid Fuels	HAD
+Drinking Water	UWD
+Sanitation	USD
+Lead Exposure	PBD
+Tree Cover Loss	TCL
+Fish Stock Status	FSS
+Regional Marine Trophic Index	MTR
+CO2 Emissions – Power	DPT
+Methane Emissions	DMT
+N2O Emissions	DNT
+Black Carbon Emissions	DBT
+SO2 Emissions	DST
+NOX Emissions	DXT
+Wastewater Treatment	WWT
+Sustainable Nitrogen Management	SNM
+
+
+
+# Prueba de identidad 
+```{r}
+cortest.bartlett(corMatrix,n=nrow(ambiental))$p.value>0.05
+```
+# Prueba de singularidad
+```{r}
+library(matrixcalc)
+is.singular.matrix(corMatrix)
+```
+```{r}
+fa.parallel(ambiental,fm = 'ML', fa = 'fa')
+```
+```{r}
+library(GPArotation)
+resfa <- fa(ambiental,nfactors = 4,cor = 'mixed',rotate = "varimax",fm="minres")
+fa.diagram(resfa)
+```
+
+
+
+
+
+```{r}
+#Imputamos
+cobertura[is.na(cobertura$PER), "PER"]=mean(cobertura$PER, na.rm=T)
+cobertura[is.na(cobertura$HOS), "HOS"]=mean(cobertura$HOS, na.rm=T)
+#Estandarizamos
+cobertura=as.data.frame(scale(cobertura[,c(1,2)]))
+head(cobertura)
+```
+
+```{r}
+library(polycor)
+corMatrix=polycor::hetcor(cobertura)$correlations
+#Explorar correlaciones:
+#Sin evaluar significancia:
+library(ggcorrplot)
+ggcorrplot(corMatrix)
+```
+```{r}
+library(psych)
+psych::KMO(corMatrix) 
+```
+# Prueba de identidad 
+```{r}
+cortest.bartlett(corMatrix,n=nrow(cobertura))$p.value>0.05
+```
+# Prueba de singularidad
+```{r}
+library(matrixcalc)
+is.singular.matrix(corMatrix)
+```
+
+```{r}
+calidad_0=calidad0
+row.names(calidad0) = calidad0$Country
+calidad0$Country = NULL
+head(calidad0)
+str(calidad0)
+```
+```{r}
+#Imputamos
+calidad0[is.na(calidad0$GDP), "GDP"]=mean(calidad0$GDP, na.rm=T)
+calidad0[is.na(calidad0$EDYE), "EDYE"]=mean(calidad0$EDYE, na.rm=T)
+```
+```{r}
+calidad0=as.data.frame(scale(calidad0[,c(1,2)]))
+head(calidad0)
+```
+
+
+
+
+
+
+
+
+
+
+
+
