@@ -1,0 +1,163 @@
+sobre cobertura estatal
+
+#Porcentaje del gasto estatal en salud respecto al gasto general en salud
+```{r}
+library(rio)
+linkinversion= "https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/inversiondelgobierno.xls.xlsx" 
+INVRGOB= import(linkinversion)
+```
+
+```{r}
+#limpieza
+names(INVRGOB)[names(INVRGOB)=="Domestic general government health expenditure (GGHE-D) as percentage of current health expenditure (CHE) (%)"]="Gasto_general_gobierno_en salud"
+INVRGOB$Country = trimws(INVRGOB$Country,whitespace = "[\\h\\v]")
+INVRGOB[2] = lapply(INVRGOB[2], as.numeric)
+INVRGOB=na.omit(INVRGOB)
+```
+```{r}
+str(INVRGOB)
+```
+#camas en hospitales
+```{r}
+library(rio)
+linkbeds= "https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/beds%20on%20hospitals.xlsx" 
+BEDS= import(linkbeds)
+```
+
+```{r}
+#limpieza
+names(BEDS)[names(BEDS)=="Hospital beds (per 10 000 population)"]="hospitals_beds"
+BEDS$Country = trimws(BEDS$Country,whitespace = "[\\h\\v]")
+
+BEDS$...3=NULL
+BEDS$...4=NULL
+BEDS[2] = lapply(BEDS[2], as.numeric)
+BEDS=na.omit(BEDS)
+
+```
+```{r}
+str(BEDS)
+```
+#acceso a servicios sanitarios
+```{r}
+library(rio)
+linkaccess= "https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/access%20sanity%20services.xlsx" 
+ACSANI= import(linkaccess)
+```
+
+```{r}
+#limpieza
+names(ACSANI)[names(ACSANI)=="Population using at least basic sanitation services (%)"]="population_access_sanity_services"
+ACSANI$Country = trimws(ACSANI$Country,whitespace = "[\\h\\v]")
+ACSANI[2] = lapply(ACSANI[2], as.numeric)
+ACSANI=na.omit(ACSANI)
+```
+```{r}
+str(ACSANI)
+```
+#personal
+```{r}
+library(rio)
+linkmedicos= "https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/cantidad%20de%20medicos%20por%20cada%2010000.xlsx" 
+personal= import(linkmedicos)
+```
+```{r}
+#limpieza
+names(personal)[names(personal)=="Medical doctors (per 10 000 population)"]="medical_doctors_per_10000_population"
+```
+```{r}
+personal$Country = trimws(personal$Country,whitespace = "[\\h\\v]")
+```
+```{r}
+personal[2] = lapply(personal[2], as.numeric)
+```
+
+```{r}
+str(personal)
+```
+```{r}
+COVERAGE = merge(INVRGOB,BEDS,all.x = T,all.y = T)
+```
+```{r}
+library(knitr)
+library(kableExtra)
+kable(COVERAGE[!complete.cases(COVERAGE),],type='html')%>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                  font_size = 10)                          
+```
+```{r}
+BEDS[BEDS$Country=="United States of America",'Country']="United States"
+BEDS[BEDS$Country=="United Kingdom of Great Britain",'Country']="United Kingdom"
+```
+```{r}
+COVERAGE = merge(INVRGOB,BEDS,)
+```
+```{r}
+HEALTHCOVERAGE=merge(COVERAGE,personal,all.x = T,all.y = T)
+```
+```{r}
+library(knitr)
+library(kableExtra)
+kable(HEALTHCOVERAGE[!complete.cases(HEALTHCOVERAGE),],type='html')%>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                  font_size = 10)                          
+```
+```{r}
+personal[personal$Country=="United States of America",'Country']="United States"
+personal[personal$Country=="United Kingdom of Great Britain and Northern Ireland",'Country']="United Kingdom"
+personal[personal$Country=="Venezuela (Bolivarian Republic of)",'Country']="Venezuela"
+personal[personal$Country=="Bolivia (Plurinational State of)",'Country']="Bolivia"
+personal[personal$Country=="Democratic People's Republic of Korea",'Country']="North Korea"
+personal[personal$Country=="Iran (Islamic Republic of)",'Country']="Iran"
+personal[personal$Country=="Republic of Korea",'Country']="South Korea"
+```
+```{r}
+HEALTHCOVERAGE=merge(COVERAGE,personal,)
+nrow(HEALTHCOVERAGE)
+```
+```{r}
+dontselect=c("Country")
+select=setdiff(names(HEALTHCOVERAGE),dontselect) 
+theData=HEALTHCOVERAGE[,select] # sin los Scores ni nombre de país.
+
+
+# esta es:
+library(polycor)
+corMatrix=polycor::hetcor(theData)$correlations
+```
+```{r}
+library(ggcorrplot)
+
+ggcorrplot(corMatrix)
+```
+```{r}
+```
+
+
+```{r}
+library(psych)
+psych::KMO(corMatrix) 
+```
+```{r}
+cortest.bartlett(corMatrix,n=nrow(theData))$p.value>0.05
+```
+```{r}
+library(matrixcalc)
+
+is.singular.matrix(corMatrix)
+```
+```{r}
+fa.parallel(theData,fm = 'ML', fa = 'fa')
+```
+```{r}
+
+library(GPArotation)
+resfa <- fa(theData,nfactors = 1,cor = 'mixed',rotate = "varimax",fm="minres")
+```
+```{r}
+print(resfa$loadings)
+```
+```{r}
+fa.diagram(resfa)
+```
+
