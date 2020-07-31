@@ -1,0 +1,21 @@
+sobre cobertura estatal
+
+#Porcentaje del gasto estatal en salud respecto al gasto general en salud
+```{r}
+library(rio)
+linkinversion= "https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/inversiondelgobierno.xls.xlsx" 
+INVRGOB= import(linkinversion)
+```
+
+```{r}
+#limpieza
+names(INVRGOB)[names(INVRGOB)=="Domestic general government health expenditure (GGHE-D) as percentage of current health expenditure (CHE) (%)"]="Gasto_general_gobierno_en salud"
+INVRGOB$Country = trimws(INVRGOB$Country,whitespace = "[\\h\\v]")
+INVRGOB[2] = lapply(INVRGOB[2], as.numeric)
+INVRGOB=na.omit(INVRGOB)
+```
+```{r}
+str(INVRGOB)
+```
+
+
