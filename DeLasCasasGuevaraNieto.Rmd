@@ -1,0 +1,679 @@
+
+____
+## **Título**
+____
+
+<a id='beginning'></a>
+
+I.  __Índice __
+
+    * [1.Carga y limpieza de la data](#Apertura)
+      * [1.1. Variable dependiente](#VD)
+      * [1.2. Variables independiente](#VI)
+      * [1.3. Variable de control](#VI)
+    * [2. Construcción de indices](#Merge)
+      * [2.1. Indice Ambiental](#ambiental)
+      * [2.2. Indice de Vulnerabilidad alimentaria](#vulneravilidad)
+      * [2.3. Indice de Cobertura de salud pública](#cobertura)
+    * [3.Regresión Lineal](#Regresión)
+    * [4.Descripción de datos](#Descripción)
+    * [5.Análisis de Cluster con el mejor modelo](#Cluster) 
+
+El tema de investigación del proyecto aplicativo es la incidencia de tuberculosis a nivel internacional.El tema es relevante debido a que es una de las diez causas principales de muerte en el mundo. Según la OMS (2018) enfermaron 10 millones de personas y  1,5 millones fallecieron. Además tiene una rapida expansión en paises en desarrollo y afectan a todos los grupos etarios , lo que ha significado un incremento en la demanda de de servicios de salud y bienestar social. De esta forma, se ha dado pase a que los gobiernos incluyan medidas para tratar la tuberculosis en su agenda. 
+
+
+```{r}
+#LIBRERIAS
+library(stringr)
+library(readr)
+library(magrittr)
+```
+
+#### **1. Carga y limpieza de la data**
+<a id='Apertura'></a> 
+
+#### **1.1. Variable dependiente**
+<a id='VD'></a> 
+##### Data de Incidencia de TB
+
+- La variable dependiente es la incidencia de TB por 100 000 habitantes, es una variable  
+
+```{r}
+library(rio)
+linkTB= "https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/tuberculosis_worldbank.xls" 
+dataTB= import(linkTB)
+
+dataTB[,c(2:20)]=NULL
+dataTB[,c(3)]=NULL
+names(dataTB) = c("Country","IN18")
+dataTB[,]=lapply(dataTB[,], trimws,whitespace = "[\\h\\v]")
+dataTB = dataTB[2:229,]
+dataTB$IN18= as.numeric(dataTB$IN18)
+str(dataTB)
+```
+
+#### **1.1. Variables independiente**
+<a id='VD'></a> 
+
+##### Data de variables para el índice de performance ambiental
+```{r}
+library(rio)
+linkambiental= "https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/2018-epi.xlsx" 
+ambiental= import(linkambiental)
+
+ambiental[,c(1:2)]=NULL
+ambiental[,c(2:14)]=NULL
+names(ambiental)=str_split(names(ambiental),".cu",simplify = T)[,1]%>%gsub('\\s','',.)
+names(ambiental)[names(ambiental)=="country"]="Country"
+ambiental[,c(3,4,8,9,10,11,12,13,15,16,17)]=NULL
+ambiental[,c(6)]=NULL
+ambiental$DPT=NULL
+ambiental$DXT=NULL
+ambiental$DNT=NULL
+ambiental$DST =NULL
+ambiental$SNM=NULL
+str(ambiental)
+```
+
+##### Data de variables para el índice de Vulnerabilidad alimentaria
+```{r}
+library(htmltab)
+#Niños menores de 5 con bajo peso en %
+linkCIA_children = "https://www.cia.gov/library/publications/resources/the-world-factbook/fields/368rank.html"
+linkPath_children='//*[@id="rankOrder"]' 
+bajopeso = htmltab(doc = linkCIA_children, which =linkPath_children)
+bajopeso$Country=trimws(bajopeso$Country,whitespace="[\\h\\v]") 
+#solo me quedo con Country y bajo peso %
+bajopeso$Rank=NULL
+bajopeso$`Date of Information`=NULL
+names(bajopeso) = c("Country", "BPESO")
+bajopeso$BPESO=as.numeric(bajopeso$BPESO)
+
+bajopeso[bajopeso$Country=="Congo, Republic of the",'Country']="Congo"
+bajopeso[bajopeso$Country=="Congo, Democratic Republic of the",'Country']="Democratic Republic of Congo"
+bajopeso[bajopeso$Country=="Gambia, The",'Country']="Gambia"
+bajopeso[bajopeso$Country=="Korea, North",'Country']="North Korea"
+bajopeso[bajopeso$Country=="Korea, South",'Country']="South Korea"
+bajopeso[bajopeso$Country=="Timor-Leste",'Country']="Timor"
+bajopeso[bajopeso$Country=="Swaziland",'Country']="Eswatini"
+
+str(bajopeso)
+```
+```{r}
+#globalhungerindex
+lkCSVghi="https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/global-hunger-index.csv"
+ghi=import(lkCSVghi)
+ghi2 = ghi[ghi$Year == "2016",]
+ghi2$Entity=trimws(ghi2$Entity,whitespace="[\\h\\v]") 
+#solo me quedo con Country y global hunger index 
+ghi2$`Code`=NULL
+ghi2$`Year`=NULL
+names(ghi2) = c("Country", "GHI")
+ghi2$GHI=as.numeric(ghi2$GHI)
+str(ghi2)
+```
+```{r}
+#prevalenceofundernourishment
+lkCSVpn="https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/prevalence-of-undernourishment.csv"
+desnutrición=import(lkCSVpn)
+desnutrición2 = desnutrición[desnutrición$Year == "2016",]
+desnutrición2$Entity=trimws(desnutrición2$Entity,whitespace="[\\h\\v]") 
+desnutrición2$`Code`=NULL
+desnutrición2$`Year`=NULL
+names(desnutrición2) = c("Country", "DESNU")
+desnutrición2$DESNU=as.numeric(desnutrición2$DESNU)
+
+str(desnutrición2)
+```
+```{r}
+#retraso del crecimiento menores de 5
+lkCSVretraso="https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/2.0%20share-of-children-younger-than-5-who-suffer-from-stunting.xlsx"
+retraso2=import(lkCSVretraso)
+retraso2$Entity=trimws(retraso2$Entity,whitespace="[\\h\\v]") 
+retraso2$`Code`=NULL
+retraso2$`Year`=NULL
+names(retraso2) = c("Country", "Retraso")
+retraso2$Retraso=as.numeric(retraso2$Retraso)
+str(retraso2)
+```
+
+##### Data de variables para el índice Cobertura estatal de salud pública básica 
+```{r}
+#Porcentaje del gasto estatal en salud respecto al gasto general en salud
+library(rio)
+linkinversion= "https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/inversiondelgobierno.xls.xlsx" 
+INVRGOB= import(linkinversion)
+
+names(INVRGOB)[names(INVRGOB)=="Domestic general government health expenditure (GGHE-D) as percentage of current health expenditure (CHE) (%)"]="Gasto_general_gobierno_en salud"
+INVRGOB$Country = trimws(INVRGOB$Country,whitespace = "[\\h\\v]")
+INVRGOB[2] = lapply(INVRGOB[2], as.numeric)
+
+str(INVRGOB)
+```
+```{r}
+#camas en hospitales
+linkbeds= "https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/beds%20on%20hospitals.xlsx" 
+BEDS= import(linkbeds)
+
+names(BEDS)[names(BEDS)=="Hospital beds (per 10 000 population)"]="hospitals_beds"
+BEDS$Country = trimws(BEDS$Country,whitespace = "[\\h\\v]")
+
+BEDS$...3=NULL
+BEDS$...4=NULL
+BEDS[2] = lapply(BEDS[2], as.numeric)
+
+BEDS[BEDS$Country=="United States of America",'Country']="United States"
+BEDS[BEDS$Country=="United Kingdom of Great Britain",'Country']="United Kingdom"
+
+str(BEDS)
+```
+```{r}
+#acceso a servicios sanitarios
+linkaccess= "https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/access%20sanity%20services.xlsx" 
+ACSANI= import(linkaccess)
+
+names(ACSANI)[names(ACSANI)=="Population using at least basic sanitation services (%)"]="population_access_sanity_services"
+ACSANI$Country = trimws(ACSANI$Country,whitespace = "[\\h\\v]")
+ACSANI[2] = lapply(ACSANI[2], as.numeric)
+ACSANI=na.omit(ACSANI)
+
+str(ACSANI)
+```
+```{r}
+#acceso a servicios sanitarios
+linkaccess= "https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/access%20sanity%20services.xlsx" 
+ACSANI= import(linkaccess)
+
+names(ACSANI)[names(ACSANI)=="Population using at least basic sanitation services (%)"]="population_access_sanity_services"
+ACSANI$Country = trimws(ACSANI$Country,whitespace = "[\\h\\v]")
+ACSANI[2] = lapply(ACSANI[2], as.numeric)
+ACSANI=na.omit(ACSANI)
+
+str(ACSANI)
+```
+```{r}
+#personal
+library(rio)
+linkmedicos= "https://github.com/valentinadlc/2020-1_trabajofinal/raw/master/cantidad%20de%20medicos%20por%20cada%2010000.xlsx" 
+personal= import(linkmedicos)
+
+names(personal)[names(personal)=="Medical doctors (per 10 000 population)"]="medical_doctors_per_10000_population"
+
+personal$Country = trimws(personal$Country,whitespace = "[\\h\\v]")
+personal[2] = lapply(personal[2], as.numeric)
+
+personal[personal$Country=="United States of America",'Country']="United States"
+personal[personal$Country=="United Kingdom of Great Britain and Northern Ireland",'Country']="United Kingdom"
+personal[personal$Country=="Venezuela (Bolivarian Republic of)",'Country']="Venezuela"
+personal[personal$Country=="Bolivia (Plurinational State of)",'Country']="Bolivia"
+personal[personal$Country=="Democratic People's Republic of Korea",'Country']="North Korea"
+personal[personal$Country=="Iran (Islamic Republic of)",'Country']="Iran"
+personal[personal$Country=="Republic of Korea",'Country']="South Korea"
+
+str(personal)
+```
+
+##### Data de Variables para el índice de Calidad política
+```{r}
+base='https://github.com/PoliticayGobiernoPUCP/estadistica_anapol2/raw/master/DATA/'
+
+corruptionLK=paste0(base,'corruption.csv')
+corru=import(corruptionLK,stringsAsFactors = F)
+corru[1]=NULL
+corru[3:7]= NULL
+corru[2] = lapply(corru[2], as.numeric)
+names(corru)[names(corru)=='2016Score']='ScoreCorru'
+
+str(corru)
+```
+```{r}
+demoLK=paste0(base,'demo.csv')
+democ=import(demoLK,stringsAsFactors = F)
+democ$Rank=NULL
+democ$Region=NULL
+democ$Regimetype = NULL
+democ[,c(3,5,6)]=NULL 
+names(democ)[names(democ)=='Score']='ScoreDemo'
+str(democ)
+```
+
+#### **1.3. Variable de control**
+<a id='VD'></a> 
+
+##### Data de Prevalencia del VIH
+```{r}
+#Prevalencia VIH
+library(htmltab)
+link_vih = "https://en.wikipedia.org/wiki/List_of_countries_by_HIV/AIDS_adult_prevalence_rate"
+linkPath_vih='//*[@id="mw-content-text"]/div/table[2]' 
+VIH = htmltab(doc = link_vih, which =linkPath_vih)
+VIH2=VIH[,c(1,2)]
+
+names(VIH2) = c("Country", "prevalencia_vih")
+VIH2$Country=trimws(VIH2$Country,whitespace="[\\h\\v]") 
+VIH2$prevalencia_vih= parse_number(VIH2$prevalencia_vih)
+
+VIH2[VIH2$Country=="Bahamas, The",'Country']="Bahamas"
+VIH2[VIH2$Country=="Congo, Democratic Republic of",'Country']="DR Congo"
+VIH2[VIH2$Country=="Congo, Republic of the",'Country']="Congo"
+VIH2[VIH2$Country=="Cote d'Ivoire",'Country']="Côte d'Ivoire"
+VIH2[VIH2$Country=="Czechia (Czech Republic)",'Country']="Czechia"
+VIH2[VIH2$Country=="Gambia, The",'Country']="Gambia"
+VIH2[VIH2$Country=="Eswatini (Swaziland)",'Country']="Eswatini"
+VIH2[VIH2$Country=="Russian Federation",'Country']="Russia"
+
+```
+
+#### **1.1. Indice ambiental**
+<a id='ambiental'></a> 
+
+Indice de Variables ambientales 
+```{r}
+ambiental1=ambiental
+row.names(ambiental) = ambiental$Country
+ambiental$Country = NULL
+corMatrix=polycor::hetcor(ambiental)$correlations
+#Explorar correlaciones:
+library(ggcorrplot)
+ggcorrplot(corMatrix)
+```
+- KMO
+```{r}
+library(psych)
+psych::KMO(corMatrix) 
+```
+- Prueba de identidad 
+```{r}
+cortest.bartlett(corMatrix,n=nrow(ambiental))$p.value>0.05
+```
+- Prueba de singularidad
+```{r}
+library(matrixcalc)
+is.singular.matrix(corMatrix)
+```
+- Número de factores
+```{r}
+fa.parallel(ambiental,fm = 'ML', fa = 'fa')
+```
+```{r}
+library(GPArotation)
+resfa <- fa(ambiental,nfactors = 1,cor = 'mixed',rotate = "varimax",fm="minres")
+fa.diagram(resfa)
+```
+- Creamos un nuevo data frame
+```{r}
+ambiental2 = fa(ambiental, 
+                     nfactors=1, 
+                     rotate="varimax")
+ambiental2$loadings
+sort(ambiental2$communalities)
+```
+```{r}
+print(ambiental2$loadings,cutoff = 0.5)
+```
+
+```{r}
+ambiental2$scores
+```
+
+```{r}
+indice1=as.data.frame(ambiental2$scores)
+names(indice1) = c("ambiental")
+indice1
+```
+
+#### **2.2. Indice de vulnerabilidad**
+<a id='vulnerabilidad'></a> 
+
+-Merge de variables que componen el índice de vulnerabilidad
+```{r}
+vul1 = merge(bajopeso,ghi2,all.x=T,all.y=T)
+vul2 = merge(vul1,desnutrición2,all.x=T,all.y=T)
+vulnerabilidad = merge(vul2,retraso2,all.x=T,all.y=T)
+```
+
+-Imputamos  con la media para no tener muchos valores perdidos
+```{r}
+vulnerabilidad0 = vulnerabilidad
+row.names(vulnerabilidad) = vulnerabilidad$Country
+vulnerabilidad$Country = NULL
+
+vulnerabilidad[is.na(vulnerabilidad$BPESO), "BPESO"]=mean(vulnerabilidad$BPESO, na.rm=T)
+vulnerabilidad[is.na(vulnerabilidad$GHI), "GHI"]=mean(vulnerabilidad$GHI, na.rm=T)
+vulnerabilidad[is.na(vulnerabilidad$DESNU), "DESNU"]=mean(vulnerabilidad$DESNU, na.rm=T)
+vulnerabilidad[is.na(vulnerabilidad$Retraso), "Retraso"]=mean(vulnerabilidad$Retraso, na.rm=T)
+vulnerabilidad=as.data.frame(scale(vulnerabilidad[,c(1:4)]))
+```
+- Matriz de correlación 
+```{r}
+corMatrix2=polycor::hetcor(vulnerabilidad)$correlations
+#Explorar correlaciones:
+#Sin evaluar significancia:
+library(ggcorrplot)
+ggcorrplot(corMatrix2)
+```
+- KMO
+```{r}
+psych::KMO(corMatrix2) 
+```
+- Prueba de identidad 
+```{r}
+cortest.bartlett(corMatrix,n=nrow(ambiental))$p.value>0.05
+```
+- Prueba de singularidad
+```{r}
+library(matrixcalc)
+is.singular.matrix(corMatrix2)
+```
+- Número de factores
+```{r}
+fa.parallel(vulnerabilidad,fm = 'ML', fa = 'fa')
+```
+```{r}
+library(GPArotation)
+resfa2 <- fa(vulnerabilidad,nfactors = 1,cor = 'mixed',rotate = "varimax",fm="minres")
+fa.diagram(resfa2)
+```
+- Creamos un nuevo Data frame
+```{r}
+vulnerabilidad2 = fa(vulnerabilidad, 
+                     nfactors=1, 
+                     rotate="varimax")
+vulnerabilidad2$loadings
+sort(vulnerabilidad2$communalities)
+```
+```{r}
+vulnerabilidad2$scores
+```
+```{r}
+indice2=as.data.frame(vulnerabilidad2$scores)
+names(indice2) = c("vulnerabilidad")
+indice2
+```
+
+#### **2.3. Indice de cobertura de salud pública**
+```{r}
+base='https://github.com/PoliticayGobiernoPUCP/estadistica_anapol2/raw/master/DATA/'
+
+corruptionLK=paste0(base,'corruption.csv')
+corru=import(corruptionLK,stringsAsFactors = F)
+corru[1]=NULL
+corru[3:7]= NULL
+corru[2] = lapply(corru[2], as.numeric)
+names(corru)[names(corru)=='2016Score']='ScoreCorru'
+
+str(corru)
+```
+
+```{r}
+demoLK=paste0(base,'demo.csv')
+democ=import(demoLK,stringsAsFactors = F)
+democ$Rank=NULL
+democ$Region=NULL
+democ$Regimetype = NULL
+democ[,c(3,5,6)]=NULL 
+names(democ)[names(democ)=='Score']='ScoreDemo'
+str(democ)
+```
+
+<a id='cobertura'></a> 
+Merge
+```{r}
+cober1 = merge(INVRGOB,BEDS)
+cobertura =merge(cober1,personal)
+
+cobertura0 = cobertura
+row.names(cobertura) = cobertura$Country
+cobertura$Country = NULL
+
+corMatrix3=polycor::hetcor(cobertura)$correlations
+ggcorrplot(corMatrix3)
+```
+
+- KMO
+```{r}
+psych::KMO(corMatrix3) 
+```
+- Prueba de identidad 
+```{r}
+cortest.bartlett(corMatrix3,n=nrow(cobertura))$p.value>0.05
+```
+- Prueba de singularidad
+```{r}
+is.singular.matrix(corMatrix3)
+```
+- Número de factores
+```{r}
+fa.parallel(cobertura,fm = 'ML', fa = 'fa')
+```
+```{r}
+library(GPArotation)
+resfa3 <- fa(cobertura,nfactors = 1,cor = 'mixed',rotate = "varimax",fm="minres")
+fa.diagram(resfa3)
+```
+- Creamos un nuevo Data frame
+```{r}
+cobertura2 = fa(cobertura, 
+                     nfactors=1, 
+                     rotate="varimax")
+cobertura2$loadings
+sort(cobertura2$communalities)
+```
+```{r}
+cobertura2$scores
+```
+
+```{r}
+indice3=as.data.frame(cobertura2$scores)
+names(indice3) = c("cobertura")
+indice3
+```
+
+#### **2.4. Indice de Calidad política**
+
+```{r}
+politica= merge(corru,democ)
+row.names(politica) = politica$Country
+politica$Country = NULL
+```
+
+- Matriz de correlación 
+```{r}
+corMatrix5=polycor::hetcor(politica)$correlations
+ggcorrplot(corMatrix5)
+```
+- KMO
+```{r}
+psych::KMO(corMatrix5) 
+```
+- Prueba de identidad 
+```{r}
+cortest.bartlett(corMatrix5,n=nrow(politica))$p.value>0.05
+```
+- Prueba de singularidad
+```{r}
+is.singular.matrix(corMatrix5)
+```
+- Número de factores
+```{r}
+fa.parallel(politica,fm = 'ML', fa = 'fa')
+```
+```{r}
+resfa2 <- fa(politica,nfactors = 1,cor = 'mixed',fm="minres")
+fa.diagram(resfa2)
+```
+- Creamos un nuevo Data frame
+```{r}
+politica2 = fa(politica[2.5], 
+                     nfactors=1, 
+                     rotate="varimax")
+```
+```{r}
+politica2$scores
+```
+```{r}
+indice5=as.data.frame(politica2$scores)
+names(indice5) = c("politica")
+indice5$Country=row.names(indice5)
+indice5
+```
+El análisis factorial exploratorio sugiere, por un lado, que los componente ..... están efectivamente correlacionados.
+
+##### Merge final con los índices, la variables control y la variable dependiente
+```{r}
+indice1$Country=row.names(indice1)
+indice2$Country=row.names(indice2)
+indice3$Country=row.names(indice3)
+indice5$Country=row.names(indice5)
+
+in1=merge(indice1,indice2)
+in2=merge(in1,indice3)
+in3=merge(in2,indice5)
+
+VIH2[is.na(VIH2$prevalencia_vih), "prevalencia_vih"]=mean(VIH2$prevalencia_vih, na.rm=T)
+in4=merge(in3,VIH2)
+
+Datafinal = merge(in4,dataTB)
+Datafinal = na.omit(Datafinal)
+```
+
+```{r}
+str(Datafinal)
+```
+
+#### **3. Regresión lineal**
+
+Hipótesis:
+
+Hipótesis 1: La incidencia de TB se ve influenciada por la calidad política (niveles de democracia y grado de corrupción).
+Hipótesis 2: La incidencia de TB se ve influenciada por la cobertura de salud pública que indica la calidad mínima de gestión pública del sistema de salud.
+Hipótesis 3: La incidencia de TB se ve influenciada por la variable de vulnerabilidad alimentaria en la población. 
+Hipótesis 4: La incidencia de TB se ve influenciada por la variable de performance medioambiental.
+ 
+```{r}
+names(Datafinal)=c("Country","AMB","VULN","COBER","POL","VIH","INTB")
+```
+```{r}
+modelo1=formula(INTB ~ POL)
+modelo2=formula(INTB~  POL+COBER+VIH)
+modelo3= formula(INTB~ POL+COBER+VULN+VIH)
+modelo4= formula(INTB~ POL+COBER+VULN+AMB+VIH)
+
+```
+```{r}
+library(stargazer)
+reg1=lm(modelo1,data=Datafinal)
+stargazer(reg1,type = "text",intercept.bottom = FALSE)
+```
+```{r}
+reg2=lm(modelo2,data=Datafinal)
+stargazer(reg2,type = "text",intercept.bottom = FALSE)
+```
+```{r}
+tanova=anova(reg1,reg2)
+stargazer(tanova,type = 'text',summary = F,title = "Table de Análisis de Varianza")
+```
+
+```{r}
+reg3=lm(modelo3,data=Datafinal)
+stargazer(reg3,type = "text",intercept.bottom = FALSE)
+```
+```{r}
+reg4=lm(modelo4,data=Datafinal)
+stargazer(reg4,type = "text",intercept.bottom = FALSE)
+```
+```{r}
+tanova=anova(reg1,reg2,reg3,reg4)
+stargazer(tanova,type = 'text',summary = F,title = "Table de Análisis de Varianza")
+```
+```{r}
+library(stargazer)
+stargazer(reg1,reg2,reg3,reg4, type = "text", title = "Modelos planteados",digits = 2, single.row = F,no.space = F,intercept.bottom = FALSE,
+          dep.var.caption="Variable dependiente:",
+          dep.var.labels="Incidencia de Tuberculosis",
+          covariate.labels=c("Constante","Politica","cobertura salud estatal","vulnerabilidad alimenticia","ambiental","prevalencia de VIH"),
+          keep.stat = c("n","adj.rsq","ser"),df = F,
+          notes.label = "Notas:")
+```
+El Y o variable dependiente es INTB, los resultados de la regresión muestran que la hipótesis con mayor efecto sobre la incidencia de la tuberculosis es la vulnerabilidad alimenticia. Y el mejor modelo es el tercero que incluye las variables independientes excepto el indice ambiental. De acuerdo al R cuadrado ajustado (0.542) se indica que explica bastante bien; además redujo el ϵ significativamente según el error típico de los residuos(RSE) del modelo 2 al 3, pero no del modelo 3 al 4.
+Por ello, podemos concluir con que las acciones del Estado no tienen mayor relevancia en la incidencia de la Tuberculosis a nivel mundial, y las condiciones de vulnerabilidad social son las que más influyen. 
+
+PRUEBAS
+1.linealidad
+```{r}
+# linea roja debe tender a horizontal
+plot(reg3, 1)
+```
+hay una tendencia a la linealidad aunque con cierto pronunciamiento, podríamos indicar que sí pasa la prueba.
+
+2. Homocedasticidad
+```{r}
+# linea roja debe tender a horizontal
+plot(reg3, 3)
+```
+
+```{r}
+library(lmtest)
+# null: modelo homocedastico
+bptest(reg3)
+```
+La probabilidad de homocedasticidad es alta (p-value mayor a 0.05), de ahi que se acepta que el modelo muestre homocedasticidad.
+
+3.Normalidad de residuos
+```{r}
+# puntos cerca a la diagonal
+plot(reg3, 2)
+```
+```{r}
+shapiro.test(reg3$residuals)
+```
+No pasa la prueba de normalidad de residuos porque su p-value es menor de 0.9.
+
+4.Multicolinelidad
+```{r}
+library(DescTools)
+VIF(reg3) # > 5 es problematico
+```
+Sí pasa las pruebas de multicolinelidad, porque no se encuentra relación problemática entre las variables
+
+5.Valores influyentes
+```{r}
+plot(reg3, 5)
+```
+```{r}
+checkReg3=as.data.frame(influence.measures(reg3)$is.inf)
+head(checkReg3)
+```
+
+```{r}
+checkReg3[checkReg3$cook.d | checkReg3$hat,] 
+
+```
+#### **4. Descripción de casos**
+Para realizar el cuadro de variables presentado en el texto, observamos aquí
+```{r}
+summary(Datafinal)
+```
+
+#### **5. Clusterización con el mejor modelo**
+```{r}
+Datafinal
+```
+```{r}
+set.seed(2019)
+library(cluster)
+library(fpc)
+library(factoextra)
+row.names(Datafinal)=Datafinal$Country
+Datafinal=na.omit(Datafinal)
+g.dist = daisy(Datafinal[,3:7], metric="gower")
+
+pam.resultado=pam(g.dist,5,cluster.only = F)
+fviz_nbclust(Datafinal[,3:7], pam,diss=g.dist,method = "gap_stat",k.max = 10,verbose = F)
+Datafinal$clusterPT=pam.resultado$cluster
+```
+
+```{r}
+fviz_nbclust(Datafinal[,c(3:7)], hcut,diss=g.dist,method = "gap_stat",k.max = 10,verbose = F)
+```
+No continuamos con la clusterización debido a que en los metodos se nos sugirió solo un cluster 
